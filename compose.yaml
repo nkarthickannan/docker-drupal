@@ -1,0 +1,69 @@
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./app:/var/www/html
+      - ./nginx/templates:/etc/nginx/templates
+    environment:
+      DOMAIN: ${DOMAIN:?Provide the domain name in .env file}
+      APP_SPECIFIC_DOCROOT: ${APP_SPECIFIC_DOCROOT}
+    restart: unless-stopped
+    depends_on:
+      - phpfpm
+    networks:
+      - app-network
+
+  phpfpm:
+    build: ./php
+    environment:
+      DB_HOST: "db"
+      DB_USERNAME: ${MYSQL_USERNAME}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+    volumes:
+      - ./app:/var/www/html
+      - composer-cache:/tmp/composer
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  db:
+    image: mysql:8.0
+    networks:
+      - app-network
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Provide the MySQL database name in .env file}
+      MYSQL_USER: ${MYSQL_USERNAME:?Provide the MySQL username in .env file}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Provide the MySQL password in .env file}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Provide the MySQL root password in .env file}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
+
+  phpmyadmin:
+    image: linuxserver/phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  composer-cache:
+  mysql_data:
+
+networks:
+  app-network:
+    driver: bridge

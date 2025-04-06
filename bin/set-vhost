@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# Inspired from https://github.com/markshust/docker-magento
+
+[ -z "$1" ] && echo "Please specify a domain name (ex. drupal.test)" && exit
+
+DOMAIN=$1
+
+if ! grep -q "$DOMAIN" /etc/hosts; then
+    echo "Your system password is needed to add an entry to /etc/hosts..."
+    printf '\n127.0.0.1 ::1 %s' "$DOMAIN" | sudo tee -a /etc/hosts
+    printf '\n127.0.0.1 ::1 phpmyadmin.%s' "$DOMAIN" | sudo tee -a /etc/hosts
+fi
